@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Countdown Numbers Solver</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+        }
+
+        label, button {
+            display: block;
+            margin: 0.5rem 0;
+        }
+
+        input {
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        button {
+            padding: 0.5rem;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #solution {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Countdown Numbers Solver</h1>
+    <form id="solver-form">
+        <label for="target">Target Number:</label>
+        <input type="number" id="target" required min="101" max="999">
+
+        <label for="numbers">Available Numbers (comma-separated):</label>
+        <input type="text" id="numbers" required pattern="^(\d+,\s*)*\d+$" placeholder="e.g., 25, 50, 75, 100, 6, 3">
+
+        <button type="submit">Solve</button>
+    </form>
+
+    <div id="solution"></div>
+
+    <script>
+        // Function to prefill values from URL parameters
+        function prefillFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const target = params.get("target");
+            const numbers = params.get("numbers");
+
+            if (target) {
+                document.getElementById("target").value = target;
+            }
+
+            if (numbers) {
+                document.getElementById("numbers").value = numbers;
+            }
+        }
+
+        document.getElementById("solver-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const target = parseInt(document.getElementById("target").value, 10);
+            const numbers = document.getElementById("numbers").value.split(",").map(n => parseInt(n.trim(), 10));
+
+            function findSolution(target, numbers) {
+                const ops = ["+", "-", "*", "/"];
+                let closest = { diff: Infinity, steps: "" };
+
+                function recurse(remaining, current, steps) {
+                    if (remaining.length === 0) return;
+
+                    for (let i = 0; i < remaining.length; i++) {
+                        const num = remaining[i];
+                        const nextRemaining = remaining.slice(0, i).concat(remaining.slice(i + 1));
+
+                        for (const op of ops) {
+                            let result;
+                            let operation;
+
+                            if (op === "+") {
+                                result = current + num;
+                                operation = `${current} + ${num} = ${result}`;
+                            } else if (op === "-") {
+                                result = current - num;
+                                operation = `${current} - ${num} = ${result}`;
+                            } else if (op === "*") {
+                                result = current * num;
+                                operation = `${current} * ${num} = ${result}`;
+                            } else if (op === "/" && num !== 0 && current % num === 0) {
+                                result = current / num;
+                                operation = `${current} / ${num} = ${result}`;
+                            } else {
+                                continue;
+                            }
+
+                            const newSteps = steps.concat(operation);
+                            const diff = Math.abs(target - result);
+
+                            if (result === target) {
+                                return { diff: 0, steps: newSteps };
+                            } else if (diff < closest.diff) {
+                                closest = { diff, steps: newSteps };
+                            }
+
+                            const subResult = recurse(nextRemaining, result, newSteps);
+                            if (subResult && subResult.diff === 0) {
+                                return subResult;
+                            }
+                        }
+                    }
+                }
+
+                for (let i = 0; i < numbers.length; i++) {
+                    const num = numbers[i];
+                    const remaining = numbers.slice(0, i).concat(numbers.slice(i + 1));
+                    const result = recurse(remaining, num, [`Start with ${num}`]);
+                    if (result && result.diff === 0) {
+                        return result;
+                    }
+                }
+
+                return closest;
+            }
+
+            const solution = findSolution(target, numbers);
+            const solutionDiv = document.getElementById("solution");
+
+            if (solution && solution.steps.length > 0) {
+                solutionDiv.innerHTML = `<h2>Solution:</h2><p>${solution.steps.join("<br>")}</p>`;
+            } else {
+                solutionDiv.innerHTML = `<h2>No Solution Found</h2>`;
+            }
+        });
+
+        // Prefill the form when the page loads
+        prefillFromURL();
+    </script>
+</body>
+</html>
